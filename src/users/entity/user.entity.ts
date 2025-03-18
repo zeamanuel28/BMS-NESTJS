@@ -20,5 +20,6 @@ export class User {
 
   @OneToMany(() => Book, (books) => books.user)
   books: Book[];
+  username: any;
   
 }

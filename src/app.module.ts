@@ -7,9 +7,11 @@ import { BooksService } from './books//service/book.service';
 import { User } from './users/entity/user.entity';
 import { Book } from './books/entity/book.entity';
 import { AuthModule } from './users/authentication/auth.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }), 
     // Configure TypeORM
     TypeOrmModule.forRoot({
       type: 'postgres', // Specify your DB type
