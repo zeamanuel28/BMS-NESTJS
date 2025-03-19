@@ -1,7 +1,7 @@
 import { 
   Controller, Get, Post, Body, Param, Put, Delete, ParseIntPipe, UseGuards 
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'; // Swagger decorators
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger'; // Import ApiParam
 import { UsersService } from '../service/users.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
@@ -54,19 +54,11 @@ export class UsersController {
     }
   }
 
-  @Get()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth() // Requires authentication (JWT)
-  @ApiOperation({ summary: 'Get all users' })
-  @ApiResponse({ status: 200, description: 'List of users.' })
-  findAll(): Promise<User[]> {
-    return this.usersService.findAll();
-  }
-
   @Get(':id')
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get a user by ID' })
+  @ApiParam({ name: 'id', type: Number, description: 'ID of the user to retrieve' })
   @ApiResponse({ status: 200, description: 'User found.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<User> {
@@ -77,6 +69,7 @@ export class UsersController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a user' })
+  @ApiParam({ name: 'id', type: Number, description: 'ID of the user to update' })
   @ApiResponse({ status: 200, description: 'User updated successfully.' })
   @ApiResponse({ status: 400, description: 'Invalid data.' })
   async update(
@@ -90,6 +83,7 @@ export class UsersController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a user' })
+  @ApiParam({ name: 'id', type: Number, description: 'ID of the user to delete' })
   @ApiResponse({ status: 200, description: 'User deleted successfully.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
@@ -98,6 +92,8 @@ export class UsersController {
 
   @Post('login')
   @ApiOperation({ summary: 'User login' })
+  @ApiParam({ name: 'email', type: String, description: 'Email of the user' })
+  @ApiParam({ name: 'password', type: String, description: 'Password of the user' })
   @ApiResponse({ status: 200, description: 'User logged in successfully.' })
   @ApiResponse({ status: 401, description: 'Invalid credentials.' })
   async login(@Body() loginDto: LoginDto) {
