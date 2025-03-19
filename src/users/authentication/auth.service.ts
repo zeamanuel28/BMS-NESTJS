@@ -16,7 +16,7 @@ export class AuthService {
 
   // ✅ Implemented generateToken properly
   generateToken(user: User): string {
-    const payload = { name: user.name, sub: user.id };
+    const payload = { name: user.name, email: user.email};
     return this.jwtService.sign(payload);
   }
 
