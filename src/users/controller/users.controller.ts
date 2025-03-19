@@ -1,3 +1,4 @@
+// Import necessary modules
 import { Controller, Get, Post, Body, Param, Put, Delete, NotFoundException, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { UsersService } from '../service/users.service';
 import { CreateUserDto } from '../dto/create-user.dto';
@@ -14,11 +15,17 @@ export class UsersController {
     private readonly authService: AuthService, // Inject AuthService
   ) {}
 
-  // Create a new user
+  // ✅ Fix: Return both the user and access token
   @Post()
-  create(@Body() createUserDto: CreateUserDto): Promise<User> {
-    return this.usersService.create(createUserDto);
-  }
+  async create(@Body() createUserDto: CreateUserDto): Promise<{ user: User; access_token: string }> {
+    const result = await this.usersService.create(createUserDto); // Create user
+    const loginResponse = await this.authService.login({ name: result.user.name, password: createUserDto.password });
+  
+    return {
+      user: result.user,
+      access_token: loginResponse.access_token, // Extract token from response
+    };}
+  
 
   // Get all users (protected)
   @Get()
@@ -31,11 +38,7 @@ export class UsersController {
   @Get(':id')
   @UseGuards(AuthGuard) // Protect this route
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<User> {
-    try {
-      return await this.usersService.findOne(id);
-    } catch (error) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    }
+    return await this.usersService.findOne(id);
   }
 
   // Update a user (protected)
@@ -45,22 +48,14 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<User> {
-    try {
-      return await this.usersService.update(id, updateUserDto);
-    } catch (error) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    }
+    return await this.usersService.update(id, updateUserDto);
   }
 
   // Delete a user (protected)
   @Delete(':id')
   @UseGuards(AuthGuard) // Protect this route
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    try {
-      await this.usersService.remove(id);
-    } catch (error) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    }
+    await this.usersService.remove(id);
   }
 
   // Login route

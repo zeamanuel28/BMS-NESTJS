@@ -9,7 +9,7 @@ import { UsersModule } from '../users.module'; // Corrected path
 
 @Module({
   imports: [
-    ConfigModule,
+    ConfigModule.forRoot(),
     forwardRef(() => UsersModule),  // Use forwardRef to resolve circular dependency
     JwtModule.registerAsync({
       imports: [],

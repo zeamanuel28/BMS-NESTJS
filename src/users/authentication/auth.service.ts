@@ -11,24 +11,26 @@ import * as bcrypt from 'bcrypt';
 export class AuthService {
   constructor(
     private jwtService: JwtService,
-    @InjectRepository(User) private userRepository: Repository<User>,  // Injecting the user repository
+    @InjectRepository(User) private userRepository: Repository<User>,  
   ) {}
 
-  // Login method: Validates user and generates JWT token
+  // ✅ Implemented generateToken properly
+  generateToken(user: User): string {
+    const payload = { name: user.name, sub: user.id };
+    return this.jwtService.sign(payload);
+  }
+
+  // Login method
   async login(loginDto: LoginDto) {
-    // Look for the user in the database
-    const user = await this.userRepository.findOne({ where: { username: loginDto.username } });
+    const user = await this.userRepository.findOne({ where: { username: loginDto.name } });
 
     if (!user || !(await bcrypt.compare(loginDto.password, user.password))) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Generate JWT payload
-    const payload = { username: user.username, sub: user.id };
-    const accessToken = this.jwtService.sign(payload);
+    // Generate JWT token
+    const accessToken = this.generateToken(user);
 
-    return {
-      access_token: accessToken,
-    };
+    return { access_token: accessToken };
   }
 }
