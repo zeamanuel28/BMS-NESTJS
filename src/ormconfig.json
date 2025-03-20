@@ -4,7 +4,7 @@
     "port": 5432,
     "username": "postgres",
     "password": "root",
-    "database": "postgres",
+    "database": "nestjs_crud_db",
     "entities": ["dist/**/*.entity{.ts,.js}"],
     "synchronize": true
   }

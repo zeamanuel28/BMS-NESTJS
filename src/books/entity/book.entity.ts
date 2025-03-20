@@ -12,9 +12,9 @@ export class Book {
   @Column()
   author: string;
 
- 
+  @Column({ nullable: true }) // ✅ New column to store the PDF filename
+  pdf: string;
+
   @ManyToOne(() => User, (user) => user.books, { onDelete: 'CASCADE' }) 
   user: User;
 }
-
-
