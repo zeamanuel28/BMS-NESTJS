@@ -32,7 +32,7 @@ export class BooksController {
   }))
   async createBook(
     @Body() bookData: Partial<Book>,
-    @UploadedFile() file: any // ✅ Use `any` to avoid TypeScript errors
+    @UploadedFile() file: any [] // ✅ Use `any` to avoid TypeScript errors
   ): Promise<Book> {
     if (!file) {
       throw new BadRequestException('PDF file is required');
