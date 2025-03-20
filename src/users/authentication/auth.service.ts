@@ -20,17 +20,33 @@ export class AuthService {
     return this.jwtService.sign(payload);
   }
 
-  // Login method
   async login(loginDto: LoginDto) {
-    const user = await this.userRepository.findOne({ where: { username: loginDto.name } });
-
-    if (!user || !(await bcrypt.compare(loginDto.password, user.password))) {
-      throw new UnauthorizedException('Invalid credentials');
+    // Step 1: Find the user by email
+    const user = await this.userRepository.findOne({
+      where: { email: loginDto.email },
+    });
+  
+    // Step 2: If user doesn't exist, throw UnauthorizedException
+    if (!user) {
+      throw new UnauthorizedException('user doesnt exist');
     }
-
-    // Generate JWT token
+  
+    // Step 3: Check if the name matches and if the password is correct
+    if (user.name !== loginDto.name) {
+      throw new UnauthorizedException('the name is not found');
+    }
+  
+    // Step 4: Compare the password using bcrypt
+    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('password mismatch');
+    }
+  
+    // Step 5: Generate JWT token if everything matches
     const accessToken = this.generateToken(user);
-
+  
     return { access_token: accessToken };
   }
+  
+  
 }

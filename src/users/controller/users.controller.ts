@@ -1,7 +1,7 @@
 import { 
-  Controller, Get, Post, Body, Param, Put, Delete, ParseIntPipe, UseGuards 
+  Controller, Get, Post, Body, Param, Put, Delete, ParseIntPipe, UseGuards, NotFoundException 
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger'; // Import ApiParam
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { UsersService } from '../service/users.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
@@ -10,7 +10,7 @@ import { AuthService } from '../authentication/auth.service';
 import { LoginDto } from '../authentication/login.dto';
 import { AuthGuard } from '../authentication/auth.guard';
 
-@ApiTags('Users') // Group all endpoints under 'Users' in Swagger
+@ApiTags('Users')
 @Controller('users')
 export class UsersController {
   constructor(
@@ -24,35 +24,42 @@ export class UsersController {
   @ApiResponse({ status: 400, description: 'Invalid input.' })
   async create(@Body() createUserDto: CreateUserDto): Promise<{ user?: User; access_token?: string; message: string }> {
     try {
-      const existingUsers = await this.usersService.findAll();
-      if (existingUsers.length === 0) {
-        const result = await this.usersService.create(createUserDto);
-        const token = this.authService.generateToken({
-          name: result.user.name,
-          email: result.user.email,
-          id: 0,
-          password: '',
-          role: '',
-          books: [],
-          username: undefined
-        });
-
+      const existingUser = await this.usersService.findByEmail(createUserDto.email);
+  
+      if (existingUser) {
         return {
-          user: result.user,
-          access_token: token,
-          message: 'First user successfully created and token generated.',
-        };
-      } else {
-        return {
-          message: 'User creation is restricted. Please log in to create more users.',
+          user: existingUser,
+          message: 'User already exists. No token generated.',
         };
       }
-    } catch (error) {
+  
+      // Create a new user if the user doesn't exist
+      const result = await this.usersService.create(createUserDto);
+  
+      // Generate the token for the new user
+      const token = this.authService.generateToken({
+        id: result.user.id,
+        name: result.user.name,
+        email: result.user.email,
+        role: result.user.role || 'user',
+        password: '', // Ensure that the password is not included in the token payload
+        books: [], // Adjust based on your needs
+        username: undefined, // Adjust if username is needed
+      });
+  
       return {
-        message: 'User could not be created. Please try again.',
+        user: result.user,
+        access_token: token,
+        message: 'User successfully created and token generated.',
+      };
+    } catch (error) {
+      console.error('Error creating user:', error);
+      return {
+        message: 'An error occurred while creating the user.',
       };
     }
   }
+  
 
   @Get(':id')
   @UseGuards(AuthGuard)
@@ -62,7 +69,11 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'User found.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<User> {
-    return await this.usersService.findOne(id);
+    const user = await this.usersService.findOne(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
   }
 
   @Put(':id')
@@ -76,7 +87,11 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<User> {
-    return await this.usersService.update(id, updateUserDto);
+    const updatedUser = await this.usersService.update(id, updateUserDto);
+    if (!updatedUser) {
+      throw new NotFoundException('User not found');
+    }
+    return updatedUser;
   }
 
   @Delete(':id')
@@ -87,13 +102,16 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'User deleted successfully.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    const user = await this.usersService.findOne(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
     await this.usersService.remove(id);
   }
 
   @Post('login')
   @ApiOperation({ summary: 'User login' })
-  @ApiParam({ name: 'email', type: String, description: 'Email of the user' })
-  @ApiParam({ name: 'password', type: String, description: 'Password of the user' })
+  @ApiBody({ type: LoginDto })
   @ApiResponse({ status: 200, description: 'User logged in successfully.' })
   @ApiResponse({ status: 401, description: 'Invalid credentials.' })
   async login(@Body() loginDto: LoginDto) {

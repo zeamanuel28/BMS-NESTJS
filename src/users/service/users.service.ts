@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entity/user.entity';
@@ -8,6 +9,11 @@ import { AuthService } from '../authentication/auth.service'; // Inject AuthServ
 
 @Injectable()
 export class UsersService {
+  async findByEmail(email: string): Promise<User | null> {  
+    return this.userRepository.findOne({ where: { email } });
+  }
+  
+  
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -19,20 +25,29 @@ export class UsersService {
   }
 
   async create(createUserDto: CreateUserDto): Promise<{ user: User; access_token: string }> {
-    const user = this.userRepository.create(createUserDto);
+    // Step 1: Hash the password before saving
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 10); // 10 is the salt rounds
+  
+    // Step 2: Create a new user with the hashed password
+    const user = this.userRepository.create({
+      ...createUserDto, // other fields from createUserDto
+      password: hashedPassword, // hashed password
+    });
+  
+    // Step 3: Save the user
     const savedUser = await this.userRepository.save(user);
-
-    // Generate JWT token after user creation
+  
+    // Step 4: Generate JWT token after user creation
     const accessToken: string = this.authService.generateToken(savedUser);
-
+  
     console.log("Generated Token:", accessToken);
     console.log("Type of access_token:", typeof accessToken); // Should print 'string'
-
+  
     return {
       user: savedUser,
       access_token: accessToken,
     };
-}
+  }
 
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
