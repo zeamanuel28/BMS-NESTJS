@@ -1,29 +1,37 @@
-import { Controller, Get, Post, Body, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { 
+  Controller, Get, Post, Body, UseInterceptors, UploadedFile, BadRequestException 
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { InjectRepository } from '@nestjs/typeorm'; // ✅ Import InjectRepository
+import { Repository } from 'typeorm'; // ✅ Import Repository
 import { BooksService } from '../service/book.service';
 import { Book } from '../entity/book.entity';
+import { User } from '../../users/entity/user.entity'; // ✅ Import User entity
+import { CreateBookDto } from '../dto/create-book.dto';
 
 @Controller('books')
 export class BooksController {
-  constructor(private readonly booksService: BooksService) {}
+  constructor(
+    private readonly booksService: BooksService,
+    @InjectRepository(User) private readonly userRepository: Repository<User> // ✅ Inject userRepository correctly
+  ) {}
 
   @Get()
   getAllBooks(): Promise<Book[]> {
     return this.booksService.findAll();
   }
-
   @Post()
   @UseInterceptors(FileInterceptor('pdf', {
     storage: diskStorage({
       destination: './uploads',
-      filename: (_req: any, file: { originalname: string; }, callback: (arg0: null, arg1: string) => void) => {
+      filename: (_req, file, callback) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
         callback(null, uniqueSuffix + extname(file.originalname));
       },
     }),
-    fileFilter: (req, file, callback) => {
+    fileFilter: (_req, file, callback) => {
       if (file.mimetype !== 'application/pdf') {
         return callback(new BadRequestException('Only PDF files are allowed!'), false);
       }
@@ -31,19 +39,36 @@ export class BooksController {
     },
   }))
   async createBook(
-    @Body() bookData: Partial<Book>,
-    @UploadedFile() file: any [] // ✅ Use `any` to avoid TypeScript errors
+    @Body() bookData: CreateBookDto,
+    @UploadedFile() file: any
   ): Promise<Book> {
     if (!file) {
       throw new BadRequestException('PDF file is required');
     }
-
-    // ✅ Explicitly cast the file
+  
+    const { userId } = bookData;
+  
+    if (!userId) {
+      throw new BadRequestException('User ID is required');
+    }
+  
+    // Convert `userId` to a number (Ensure Type Consistency)
+    const user = await this.userRepository.findOne({ where: { id: Number(userId) } });
+  
+    if (!user) {
+      throw new BadRequestException('Invalid User ID: User does not exist');
+    }
+  
+    // Save the book with the userId
     const uploadedFile = file as unknown as { filename: string };
-
-    // ✅ Ensure `pdf` field exists in bookData
-    const newBookData: Partial<Book> & { pdf?: string } = { ...bookData, pdf: uploadedFile.filename };
-
+    const newBookData = { 
+      ...bookData, 
+      pdf: uploadedFile.filename, 
+      userId: Number(userId) // Ensure it's a number
+    };
+  
     return this.booksService.create(newBookData);
   }
+  
+
 }
